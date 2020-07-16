@@ -1,0 +1,8 @@
+{
+	"to":"dSpv2LVG-S_TeW6LJ9dEJR:APA91bHq_grA6Y6b0C1VULqQ5Jr3IsQJ_Qtk4N5hl2B_82g44TW8CQ_1J65tYm0dTrnY-7T9bWSxQkiR5QPZ59OgA3cn7-MMDw5XoU-9cQO3FJjKcRcf6CZ0ZaNCvGS7WxA-nbbqwMkw",
+	"notification":{
+		"title":"Hello",
+		 "body":"World"
+	}
+}
+curl --header "Authorization: key=RCaGfWFtTAIcAdko7Mrc59Wf8vfCtQjOXxSGAYXvAUU" --header "Content-Type: application/json" -d '{"to":"dSpv2LVG-S_TeW6LJ9dEJR:APA91bHq_grA6Y6b0C1VULqQ5Jr3IsQJ_Qtk4N5hl2B_82g44TW8CQ_1J65tYm0dTrnY-7T9bWSxQkiR5QPZ59OgA3cn7-MMDw5XoU-9cQO3FJjKcRcf6CZ0ZaNCvGS7WxA-nbbqwMkw","notification":{"title":"Hello","body":"World"}}' https://fcm.googleapis.com/fcm/send
