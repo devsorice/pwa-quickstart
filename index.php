@@ -19,14 +19,6 @@
   <!-- Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="manifest" href="manifest.webmanifest">
-  <style>
-  .bottoniera{
-    display:flex;
-    justify-content: space-around;
-    margin: 0 0 0 auto;
-    max-width: 308px;
-  }
-  </style>
 </head>
 <body>
 <div class="demo-layout mdl-layout mdl-js-layout mdl-layout--fixed-header">
@@ -44,13 +36,7 @@
       <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-cell--12-col-desktop">
         <div class="mdl-card__supporting-text mdl-color-text--grey-600">
           <!-- div to display the generated Instance ID token -->
-          <div id="main-container"></div>
-          <div class="fixed-action-btn direction-top" style="bottom: 45px; right: 24px;">
-            <a onclick="requestToken()" class="btn btn-floating btn-large cyan">
-              <i id="icon-notifications" class="material-icons">notifications</i>
-            </a>
-          </div>
-      
+          <div id="main-container"></div>      
           <div id="token_div" style="display: none;">
             <h4>Instance ID Token</h4>
             <p id="token" style="word-break: break-all;"></p>
@@ -73,24 +59,9 @@
     </div>
   </main>
 </div>
- <div id="modal_install" class="modal">
-    <div class="modal-content">
-      <h4>&#x1F52A; Installare?</h4>
-      <p>Installa questa bellissima app</p>
-    </div>
-    <div class="modal-footer">
-      <div class="bottoniera">
-        <a id="buttonIgnore" class="btn-small waves-effect waves-light red" href="#!" type="submit" name="action">Annulla
-          <i class="material-icons right">close</i>
-        </a>      
-        <a id="buttonInstall" class="btn-small waves-effect waves-light" href="#!" type="submit" name="action">Installa
-          <i class="material-icons right">send</i>
-        </a>
-      </div>
-    </div>
-  </div>
- <script src="js/pwa.js?v=<?=$version?>"></script> 
+ <script src="js/pwa.js?v=<?=$version?>"></script>  
+ <script src="js/my_pwa_config.js?v=<?=$version?>"></script>
+ <script src="js/my_pwa_ui.js?v=<?=$version?>"></script>
  <script src="js/my_pwa.js?v=<?=$version?>"></script>
- <script src="js/main.js?v=<?=$version?>"></script>
 </body>
 </html>

@@ -14,19 +14,51 @@ class PWA{
 	constructor(config={}){
 		this.isIos = /iphone|ipad|ipod/.test( window.navigator.userAgent.toLowerCase() );
 		this.online = navigator.onLine;
-		this.callbacks = config.events;
+		this.callbacks = {};
+		this.installPromptInitialized = false;
 		this.ui = config.ui;
 		this.events = pwa_events;
 		this.required_scripts = pwa_required_scripts;
 		this.config = config;
 		this.isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
-		this.isInStandaloneMode = this.isInStandaloneMode || window.matchMedia('(display-mode: standalone)').matches;		
+		this.isInStandaloneMode = this.isInStandaloneMode || window.matchMedia('(display-mode: standalone)').matches;
+
+		if(typeof config.ui_functions!='undefined' && config.ui_functions)
+			this.callbacks = config.ui_functions;
+		if(typeof config.serviceWorkers!='undefined' && config.serviceWorkers.length){
+			window.addEventListener('load', () => {
+				for (var i = 0; i < config.serviceWorkers.length; i++) {
+					 pwa_object.registerServiceWorker(config.serviceWorkers[i]);
+				};
+			});
+		}
 		if(typeof window.localStorage.installDecision!='undefined')
 			this.installDecision = 	window.localStorage.installDecision;
 		else{
 			this.installDecision = 'not_shown';
 		}
+
 		pwa_object = this;	
+	}
+	reset(){
+		this.setInstallPopupNotShown();
+	}
+	registerServiceWorker(path){
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register(path)
+  			.then(reg => this.triggerEvent('serviceWorkerRegistered',reg))
+      		.catch(err => this.triggerEvent('serviceWorkerRegistrationError',reg));
+		}
+		else{
+			this.triggerEvent('serviceWorkerNotSupportedError');
+		}
+	}
+	isInstallPopupShown(){
+		return typeof this.installDecision!='undefined' && this.installDecision && this.installDecision!='not_shown';
+	}
+	setInstallPopupNotShown(){
+		this.installDecision = 'not_shown';
+		window.localStorage.installDecision = 'not_shown';
 	}
 	setInstallDecision(bool){
 		this.installDecision = bool ? 'accepted': 'refused';
@@ -65,65 +97,171 @@ class PWA{
 			this.main();
 		}
 	}
-	getToken(callback){
+	//subscribeForNotifications
+	getToken(){
 		if (!this.isIos){
 			this.messaging.getToken().then((currentToken) => {
 	   			this.firebaseToken= currentToken;
-	   			callback(currentToken);
+	   			if (currentToken) {
+			        this.sendTokenToServer(currentToken);
+			        this.triggerEvent('updateUIForPushEnabled',currentToken);
+			      } else {
+			      	this.triggerEvent('updateUIForPushPermissionRequired');
+			        this.setTokenSentToServer(false);
+			    }
 		    }).catch((err) => {
-		       this.callbacks['tokenError'](err);
+		       this.triggerEvent('tokenError',err);
 		    });
 		}else{
-			 this.callbacks['tokenError']('Non supportato');
+			 this.triggerEvent('tokenError','Non supportato');
 		}		
 	}
-	deleteToken(callback){
+	triggerEvent(ev,data={}){
+		if(typeof this.callbacks[ev]=='function')
+			this.callbacks[ev](data);
+		else if( typeof this[ev]=='function')
+			this[ev](data);		
+	}
+	//unsubscribeForNotifications
+	deleteToken(){
 		if (!this.isIos){
 			  this.messaging.getToken().then((currentToken) => {
 			    this.messaging.deleteToken(currentToken).then(() => {
 			        this.firebaseToken= null;
-	   				callback(currentToken);
+	   				this.setTokenSentToServer(false);
 			    }).catch((err) => {
-			     this.callbacks['deleteTokenError'](err);
+			     this.triggerEvent('deleteTokenError',err);
 			    });
 			    // [END delete_token]
 			  }).catch((err) => {
-			    this.callbacks['deleteTokenError'](err);
+			    this.triggerEvent('deleteTokenError',err);
 			  });
 		}else{
-			 this.callbacks['deleteTokenError']('Non supportato');
+			 this.triggerEvent('deleteTokenError','Non supportato');
 		}
 	}
-	initInstallPrompt(){
-		if (this.isIos && !this.isInStandaloneMode && this.installDecision == 'not_shown') {
-		 	this.callbacks['installDialogIos']();
-		}else if(typeof this.callbacks['installDialog']!='undefined' && this.installDecision == 'not_shown' && !this.isInStandaloneMode){
-			window.addEventListener('beforeinstallprompt', (e) => {
-				 e.preventDefault();
-				 this.deferredPrompt = e;
-				 this.callbacks['installDialog'](e);
-				 this.ui.buttonInstall.addEventListener('click', (e) => {
-     				this.deferredPrompt.prompt();
+	promptNotification(){
+		this.triggerEvent('requestToken');
+		this.getToken();
+	}
+	sendTokenToServer(token){
+		if(typeof this.config.notificationsEndpoint!='undefined' && this.config.notificationsEndpoint){
+			if (!this.isTokenSentToServer()) {
+				let data = {'token':token};
+				fetch(this.config.notificationsEndpoint, {
+			      method: 'post',
+			      headers: {
+			        'Accept': 'application/json',
+			        'Content-Type': 'application/json'
+			      },
+			      body: JSON.stringify(data)
+			    });
+			    this.setTokenSentToServer(true);
+			}
+		}
+	}
+	bindElement(ui_el_name, event_name, callback){
+		if(typeof this.ui !='undefined' && typeof this.ui[ui_el_name]!='undefined' && this.ui[ui_el_name]){
+				const el = document.querySelector(this.ui[ui_el_name]);
+				el.addEventListener('event_name', callback);
+			}
+
+	}
+	installDialogIos(){
+		if(typeof this.ui.iosInstallDialog && this.ui.iosInstallDialog!='undefined'){
+			let dialog = this.appendHtml(this.ui.iosInstallDialog);
+			let style = dialog.getAttribute('style');  			
+  			dialog.querySelector('a.close').addEventListener('click',function(){
+  				dialog.setAttribute('style', style+'; display:none!important;');
+  				pwa_object.setInstallDecision(false);
+  			});
+		}
+	}
+	installAccepted(){
+		this.triggerEvent('closeInstallPopup');
+	}
+	installDenied(){
+		this.triggerEvent('closeInstallPopup');
+	}
+	installed(){
+		this.triggerEvent('notifyUserAppInstalled');
+	}
+	promptInstall(){
+		if (this.isIos){
+			this.triggerEvent('installDialogIos');
+			pwa_object.setInstallDecisionString('shown');
+ 
+		}else{
+			this.triggerEvent('installDialog',this.deferredPrompt);
+			this.bindElement('buttonInstall','click',(e) => {
+					this.deferredPrompt.prompt();
 				    this.deferredPrompt.userChoice.then((choiceResult) => {
 				      if (choiceResult.outcome === 'accepted') {
 				         this.setInstallDecision(true);
-				         this.callbacks['installAccepted']();
+				         this.triggerEvent('installAccepted');
 				      } else {
 				        this.setInstallDecision(false);
-				        this.callbacks['installDenied']();
+				        this.triggerEvent('installDenied');
 				      }
 				    });
-  				});
+			});
+			this.bindElement('buttonDenyInstall','click',(e) => {
+					 this.setInstallDecision(false);
 			});
 		}
+	}
+	isInstallPromptInitialized(){
+		return typeof this.installPromptInitialized!='undefined' && this.installPromptInitialized;
+	}
+	appendHtml(html){
+		let newDiv = document.createElement("div");
+		document.body.appendChild(newDiv);
+		newDiv.innerHTML = html;
+		return newDiv.firstChild;
+	}
+	initInstallPrompt(){
+		if(typeof this.callbacks['installDialog']!='undefined' && !this.isInStandaloneMode){
+			let installPopup = null;
+			if(typeof this.ui.installPopup !='undefined' && this.ui.installPopup){		    
+				installPopup = this.appendHtml(this.ui.installPopup); 
+				installPopup.setAttribute('id', 'modal_install'); 
+				installPopup.style.display = 'none';			
+			}
+			window.addEventListener('beforeinstallprompt', (e) => {
+				 e.preventDefault();
+				 this.deferredPrompt = e;
+				 this.installPromptInitialized = true;
+				 e.installPopup = installPopup;		
+				 this.triggerEvent('installPromptInitialized',e);
+				 if(!pwa_object.isInstallPopupShown() && typeof this.config.firstLoadAskInstall!='undefined' && this.config.firstLoadAskInstall)
+					pwa_object.promptInstall();
+					
+			});
+		}
+	}
+	initNotificationPrompt(){
+		if(typeof this.ui.notificationBell !='undefined' && this.ui.notificationBell){	
+			let notificationBell = this.appendHtml(this.ui.notificationBell); 
+			notificationBell.setAttribute('id','notificationBell');
+			notificationBell.addEventListener('click',function(){
+				pwa_object.promptNotification();
+			});
+		}
+	}
+	isTokenSentToServer() {
+	  return window.localStorage.getItem('sentToServer') === '1';
+	}
+	setTokenSentToServer(sent) {
+	  window.localStorage.setItem('sentToServer', sent ? '1' : '0');
 	}
 	setOnlineStatus(isOnline){ 
 		this.online = isOnline; 
 	}
 	main(){
 		this.initInstallPrompt();
-		window.addEventListener('online', () =>  { this.setOnlineStatus(true);   this.callbacks['onlineStatusChange'](true); }  );
-    	window.addEventListener('offline', () => { this.setOnlineStatus(false);  this.callbacks['onlineStatusChange'](false); }  );
+		this.initNotificationPrompt();
+		window.addEventListener('online', () =>  { this.setOnlineStatus(true);   this.triggerEvent('onlineStatusChange',true); }  );
+    	window.addEventListener('offline', () => { this.setOnlineStatus(false);  this.triggerEvent('onlineStatusChange',false); }  );
     	var firebaseConfig = this.config.firebaseConfig.init;    	
 		firebase.initializeApp(firebaseConfig);
 		this.messaging = firebase.messaging();
@@ -133,17 +271,18 @@ class PWA{
 		this.messaging.onTokenRefresh(() => {
     		pwa_object.messaging.getToken().then((refreshedToken) => {
     			this.firebaseToken = refreshedToken;
-    			this.callbacks['tokenRefresh'](this,refreshedToken);
+    			this.sendTokenToServer(refreshedToken);
+    			this.triggerEvent('tokenRefresh',refreshedToken);
     		}).catch((err) => {
-	      		this.callbacks['tokenError'](err);	      		
+	      		this.triggerEvent('tokenError',err);	      		
     		});
   		});
   		this.messaging.onMessage((payload) => {
-  			this.callbacks['message'](payload);	
+  			this.triggerEvent('message',payload);	
   		});
 		window.addEventListener('appinstalled', (evt) => {
-			this.callbacks['installed'](evt);
+			this.triggerEvent('installed',evt);
 		});
-  		this.callbacks['start'](this.messaging);
+  		this.triggerEvent('start',this.messaging);
 	}
 }

@@ -4,41 +4,39 @@ body {
   line-height: 1.5;
   margin: 0;
 }
-
 header {
   background: #333;
   color: #fff;
   text-align: center;
   padding: 0.5rem;
 }
-
 main {
   padding: 2rem;
 }
-
 nav {
   background: #444;
   padding: 0.2rem 2rem;
 }
-
 nav ul {
   list-style: none;
   padding: 0;
   display: flex;
 }
-
 nav a {
   padding: 10px;
   color: #fff;
   text-decoration: none;
 }
-
 nav .current > a {
   color: yellow;
 }
-
-
-
+/*Popup Install*/
+.bottoniera{
+  display:flex;
+  justify-content: space-around;
+  margin: 0 0 0 auto;
+  max-width: 308px;
+}
 /*Speech Bubble*/
 /*custom*/
 .speech-bubble a.close {
@@ -167,7 +165,6 @@ nav .current > a {
     -webkit-transform: rotate(90deg) skew(-25deg) translateY(16.6666666667px);
     transform: rotate(117deg) translateY(16.6666666667px);
 }
-
 .speech-bubble cite {
   position: absolute;
   bottom: -2rem;
