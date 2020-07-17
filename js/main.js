@@ -7,6 +7,9 @@ pwa.start();
     });
 	elems = document.querySelectorAll('.collapsible');
 	instances = M.Collapsible.init(elems);
+  elems = document.querySelectorAll('.tap-target');
+  instances = M.TapTarget.init(elems);
+
   });
   if (!('PushManager' in window)) {
       toast('Sorry, Push notification isn\'t supported in your browser.');
@@ -25,7 +28,7 @@ function toast(msg){
 	 M.toast({html:msg, classes: 'red'});
 }
 function saveLog(data){
-  fetch('/save.php', {
+  fetch('save.php', {
       method: 'post',
       headers: {
         'Accept': 'application/json',

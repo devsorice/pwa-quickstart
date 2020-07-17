@@ -20,6 +20,7 @@ var pwa_config = {
     'start':onStartPWA,
     'tokenRefresh':onTokenRefreshPWA,
     'tokenError':onTokenErrorPWA,
+    'deleteTokenError':onDeleteTokenError,
     'message':onMessagePWA,
     'installDialog':openInstallDialog,
     'installDialogIos':openInstallDialogIos,
@@ -29,6 +30,7 @@ var pwa_config = {
     'onlineStatusChange':onOnlineStatusChange
   }
 };
+
 
 //Inizializzazione PWA
 var pwa = new PWA(pwa_config);
@@ -43,6 +45,9 @@ let deferredPrompt;
 //Eventi PWA////////
 ////////////////////
 //L'utente ha installato la nostra pwa
+function onDeleteTokenError(){
+  toast('Non sono riuscito a rimuovere il token');
+}
 function onOnlineStatusChange(status){
   if(status){
      toast('Adesso sei Online');
@@ -54,6 +59,11 @@ function onInstallDenied(){
    toast('INSTALL: Fail');
    M.Modal.getInstance(modal_install).close();
    console.log('User dismissed the install prompt');
+}
+function onInstallDeniedIos(){
+   toast('INSTALL: Fail');
+  pwa.setInstallDecision(false);
+  document.querySelector('.speech-bubble.dialog-ios').classList.add('hide');
 }
 function onInstallAccepted(){
   toast('INSTALL: Success');
@@ -76,6 +86,7 @@ function onTokenRefreshPWA(refreshedToken){
 }
 //Non siamo riusciti ad ottenere un nuovo token per ricevere notifiche push
 function onTokenErrorPWA(err){
+  toast('Non è possibile ricevere notifiche sul tuo dispositivo');
   console.log('Unable to retrieve refreshed token ', err);
   showToken('Unable to retrieve refreshed token ', err);
 }
@@ -92,8 +103,8 @@ function openInstallDialog(){
   M.Modal.getInstance(modal_install).open();
 }
 function openInstallDialogIos(){
-  alert('sei su ios');
-  pwa.setInstallDecision(false);
+  pwa.setInstallDecisionString('shown');
+  document.body.innerHTML+='<blockquote class="speech-bubble dialog-ios"><div class="container"><a href="#!" onclick="onInstallDeniedIos()" ountouchend="onInstallDeniedIos()" class="close red"><i class="material-icons">close</i></a><div class="apple-add-icon-container"><img src="img/QuickActions_Add.png" class="apple-add-icon"></div><div class="apple-share-container"><div class="apple-share-title">Installa questa App!</div>Fai un tap su <img src="img/Navigation_Action.png"> e poi su "Aggiungi a Home"</div></div></blockquote>';
 }
 
 
@@ -103,7 +114,6 @@ function openInstallDialogIos(){
 //Helper Functions PWA//
 ////////////////////////
 function showToken(currentToken) {
-  // Show token in console and UI.
   const tokenElement = document.querySelector('#token');
   tokenElement.textContent = currentToken;
 }
@@ -117,7 +127,6 @@ function sendTokenToServer(currentToken) {
   if (!isTokenSentToServer()) {
     console.log('Sending token to server...');
     saveLog(currentToken);
-    // TODO(developer): Send the current token to your server.
     setTokenSentToServer(true);
   } else {
     console.log('Token already sent to server so won\'t send it again ' +
@@ -132,57 +141,28 @@ function showHideDiv(divId, show) {
     div.style = 'display: none';
   }
 }
-function resetUI() {
+
+function requestToken(){
   pwa.getToken(function(currentToken){
       if (currentToken) {
         sendTokenToServer(currentToken);
         updateUIForPushEnabled(currentToken);
       } else {
-        // Show permission request.
         console.log('No Instance ID token available. Request permission to generate one.');
-        // Show permission UI.
         updateUIForPushPermissionRequired();
         setTokenSentToServer(false);
       }
   });
+}
+function resetUI() {
+  requestToken();
   clearMessages();
 }
-function requestPermission() {
-  console.log('Requesting permission...');
-  // [START request_permission]
-  Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      console.log('Notification permission granted.');
-      // TODO(developer): Retrieve an Instance ID token for use with FCM.
-      // [START_EXCLUDE]
-      // In many cases once an app has been granted notification permission,
-      // it should update its UI reflecting this.
-      resetUI();
-      // [END_EXCLUDE]
-    } else {
-      console.log('Unable to get permission to notify.');
-    }
-  });
-  // [END request_permission]
-}
 function deleteToken() {
-  // Delete Instance ID token.
-  // [START delete_token]
-  messaging.getToken().then((currentToken) => {
-    messaging.deleteToken(currentToken).then(() => {
+   pwa.deleteToken(function(currentToken){
       console.log('Token deleted.');
       setTokenSentToServer(false);
-      // [START_EXCLUDE]
-      // Once token is deleted update UI.
       resetUI();
-      // [END_EXCLUDE]
-    }).catch((err) => {
-      console.log('Unable to delete token. ', err);
-    });
-    // [END delete_token]
-  }).catch((err) => {
-    console.log('Error retrieving Instance ID token. ', err);
-    showToken('Error retrieving Instance ID token. ', err);
   });
 }
 // Add a message to the messages element.
@@ -204,11 +184,13 @@ function clearMessages() {
   }
 }
 function updateUIForPushEnabled(currentToken) {
+  document.querySelector('#icon-notifications').innerHTML =  typeof pwa.firebaseToken!='undefined' &&  pwa.firebaseToken ? 'notifications_active': 'notifications';
   showHideDiv(tokenDivId, true);
   showHideDiv(permissionDivId, false);
   showToken(currentToken);
 }
 function updateUIForPushPermissionRequired() {
+   document.querySelector('#icon-notifications').innerHTML =  typeof pwa.firebaseToken!='undefined' &&  pwa.firebaseToken ? 'notifications_active': 'notifications';
   showHideDiv(tokenDivId, false);
   showHideDiv(permissionDivId, true);
 }

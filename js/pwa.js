@@ -32,6 +32,10 @@ class PWA{
 		this.installDecision = bool ? 'accepted': 'refused';
 		window.localStorage.installDecision = this.installDecision;
 	}
+	setInstallDecisionString(str){
+		this.installDecision = str;
+		window.localStorage.installDecision = this.installDecision;
+	}
 	showNotification(title, message) {
 	  if ('Notification' in window) {
 	    navigator.serviceWorker.ready.then(registration => {
@@ -62,12 +66,33 @@ class PWA{
 		}
 	}
 	getToken(callback){
-		 this.messaging.getToken().then((currentToken) => {
-   			this.firebaseToken= currentToken;
-   			callback(currentToken);
-	    }).catch((err) => {
-	       this.callbacks['tokenError'](err);
-	    });
+		if (!this.isIos){
+			this.messaging.getToken().then((currentToken) => {
+	   			this.firebaseToken= currentToken;
+	   			callback(currentToken);
+		    }).catch((err) => {
+		       this.callbacks['tokenError'](err);
+		    });
+		}else{
+			 this.callbacks['tokenError']('Non supportato');
+		}		
+	}
+	deleteToken(callback){
+		if (!this.isIos){
+			  this.messaging.getToken().then((currentToken) => {
+			    this.messaging.deleteToken(currentToken).then(() => {
+			        this.firebaseToken= null;
+	   				callback(currentToken);
+			    }).catch((err) => {
+			     this.callbacks['deleteTokenError'](err);
+			    });
+			    // [END delete_token]
+			  }).catch((err) => {
+			    this.callbacks['deleteTokenError'](err);
+			  });
+		}else{
+			 this.callbacks['deleteTokenError']('Non supportato');
+		}
 	}
 	initInstallPrompt(){
 		if (this.isIos && !this.isInStandaloneMode && this.installDecision == 'not_shown') {
@@ -96,12 +121,14 @@ class PWA{
 		this.online = isOnline; 
 	}
 	main(){
+		this.initInstallPrompt();
 		window.addEventListener('online', () =>  { this.setOnlineStatus(true);   this.callbacks['onlineStatusChange'](true); }  );
     	window.addEventListener('offline', () => { this.setOnlineStatus(false);  this.callbacks['onlineStatusChange'](false); }  );
-    	var firebaseConfig = this.config.firebaseConfig.init;
+    	var firebaseConfig = this.config.firebaseConfig.init;    	
 		firebase.initializeApp(firebaseConfig);
 		this.messaging = firebase.messaging();
-		var publicVapidKey = this.config.firebaseConfig.publicVapidKey;
+		
+		var publicVapidKey = this.config.firebaseConfig.publicVapidKey;	
 		this.messaging.usePublicVapidKey(publicVapidKey);
 		this.messaging.onTokenRefresh(() => {
     		pwa_object.messaging.getToken().then((refreshedToken) => {
@@ -117,7 +144,6 @@ class PWA{
 		window.addEventListener('appinstalled', (evt) => {
 			this.callbacks['installed'](evt);
 		});
-  		this.callbacks['start'](this.messaging);	
-  		this.initInstallPrompt();
+  		this.callbacks['start'](this.messaging);
 	}
 }

@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=<?=$version?>">
   <title>Home - Service Worker Example</title>
   <script src="//cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
@@ -45,6 +45,12 @@
         <div class="mdl-card__supporting-text mdl-color-text--grey-600">
           <!-- div to display the generated Instance ID token -->
           <div id="main-container"></div>
+          <div class="fixed-action-btn direction-top" style="bottom: 45px; right: 24px;">
+            <a onclick="requestToken()" class="btn btn-floating btn-large cyan">
+              <i id="icon-notifications" class="material-icons">notifications</i>
+            </a>
+          </div>
+      
           <div id="token_div" style="display: none;">
             <h4>Instance ID Token</h4>
             <p id="token" style="word-break: break-all;"></p>
@@ -58,7 +64,7 @@
             <h4>Needs Permission</h4>
             <p id="token"></p>
             <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored"
-                    onclick="requestPermission()">Request Permission</button>
+                    onclick="requestToken()">Request Permission</button>
           </div>
           <!-- div to display messages received by this app. -->
           <div id="messages"></div>
